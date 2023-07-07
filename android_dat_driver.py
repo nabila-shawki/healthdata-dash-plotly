@@ -50,15 +50,15 @@ start_date = dcc.DatePickerSingle(
             )
                     
 end_date = dcc.DatePickerSingle(
-                        id='end-date-picker',
-                        min_date_allowed=pd.to_datetime('2023-06-05'),
-                        max_date_allowed=pd.to_datetime('2023-07-31'),
-                        initial_visible_month=pd.to_datetime('2023-06-05'),
-                        date=pd.to_datetime('2023-06-30'),
-                        persistence=True,
-                        persisted_props=['date'],
-                        persistence_type='session'
-                    )
+            id='end-date-picker',
+            min_date_allowed=pd.to_datetime('2023-06-05'),
+            max_date_allowed=pd.to_datetime('2023-07-31'),
+            initial_visible_month=pd.to_datetime('2023-06-05'),
+            date=pd.to_datetime('2023-06-30'),
+            persistence=True,
+            persisted_props=['date'],
+            persistence_type='session'
+            )
 
 # create a layout
 #
@@ -103,16 +103,41 @@ app.layout = dbc.Container(
             #className="g-0",
         ),
 
+        # The Pie chart for step target
+        #     
         dbc.Row([
             dbc.Col(
                 dcc.Graph(                    
                     id='pie-chart',
                     responsive=True
                 ),
-                width={"size": 8},
+                width={"size": 4},
+            ),
+
+            dbc.Col(
+                
+                # Average steps
+                #
+                [
+                dbc.Row(html.Div(id='progress-bar')),
+
+                # # Average move minutes
+                # #
+                # dbc.Row([
+                #     dbc.Col(html.H4("Average Movement Duration"), width="2"),
+
+                # ]),
+
+                # # Average maximum heart rate
+                # #
+                # dbc.Row([
+                #     dbc.Col(html.H4("Average Heart Rate"), width="2"),
+                # ]),
+                ]
             ),
         ],
             justify="left",
+            align = "middle",
             className="mb-4",
         ),
 
@@ -127,31 +152,78 @@ app.layout = dbc.Container(
     # [dash.dependencies.Input('start-date-picker', 'date'),
     #  dash.dependencies.Input('end-date-picker', 'date')]
     Output('pie-chart', 'figure'),
+    Output('progress-bar', 'children'),
     Input('start-date-picker', 'date'),
     Input('end-date-picker', 'date'),    
 )
 def update_pie_chart(start_date, end_date):
     df = dat.filtered_df
     filtered_df = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))]
+    #print(filtered_df)
     value_counts = filtered_df['Target Met'].value_counts()
     value_counts = value_counts.sort_index(ascending=False)
-    
+    total_days = len(filtered_df.index)
+    target_met = total_days - value_counts[0]
+
+    print(total_days, target_met)
     fig = px.pie(
         value_counts,
         values=value_counts.values,
         names=value_counts.index,
         hole=0.7,
         color=value_counts.index,
-        color_discrete_map={  0: 'gray', 1: 'blue'},
+        color_discrete_map={  0: '#cccccc', 1: '#2E86C1'},
         labels={'label': 'Value'},
+         
         
     )
     # hiding legend in pyplot express.
     fig.update_traces(showlegend=False,
                       textinfo='none',
-                      sort=False
+                      sort=False,
+                      hoverinfo="skip",
+                      hovertemplate=None,
                       )
-    return fig
+
+    fig.update_layout(
+        autosize=True,
+        margin=dict(t=20, b=20, l=20, r=20),
+        showlegend=False,
+        annotations=[
+            dict(
+                #text= f"<span style='font-size: 30px; color: #5DADE2; font-weight: bold; font-family: Arial;'>{target_met}/{total_days}</span><br>",
+                text=f"<span style='font-size: 20px; color: #5DADE2; font-weight: bold; font-family: Arial;'>Step Target Met</span><br><br>"
+                    f"<span style='font-size: 30px; color: #5DADE2; font-weight: bold; font-family: Arial;'>{target_met}/{total_days}</span><br>"
+                    f"<span style='font-size: 20px; color: #5DADE2; font-weight: bold; font-family: Arial;'>Days</span>",
+                showarrow=False,
+                font=dict(size=16),
+                x=0.5,
+                y=0.5
+            )
+        ],
+        
+    )
+
+    # Progress bar
+    step_count_avg = filtered_df['Step count'].mean()
+    progress_percent = (step_count_avg / target_count) * 100
+    progress_bar = dbc.Container(
+        [
+            dbc.Row([
+                dbc.Col(html.H4(f"Avg. Step Count: {step_count_avg:.0f}"), width="auto", align="left"),
+            # ),
+            # dbc.Row(
+                dbc.Col(
+                    dbc.Progress(value=progress_percent, style={'height': '30px'}),
+                    className="mb-2",
+                )]
+            ),
+            # dbc.Row(
+            #     dbc.Col(html.Span(f"{progress_percent:.0f}%"))
+            # )
+        ]
+    )
+    return fig, progress_bar
 
 if __name__=='__main__':
     app.run_server(debug=True)
