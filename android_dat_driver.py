@@ -34,6 +34,8 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.PULSE],
                 meta_tags=[{'name': 'viewport',
                             'content': 'width=device-width, initial-scale=1.0'}]
                 )
+server = app.server
+
 # the datepicker
 #
 start_date = dcc.DatePickerSingle(
